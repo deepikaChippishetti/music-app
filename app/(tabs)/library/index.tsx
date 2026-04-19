@@ -1,23 +1,18 @@
-import { Link } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
-
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { colors } from '@/utils/colors';
 import { spacing } from '@/utils/spacing';
 
-export default function ModalScreen() {
+export default function LibraryScreen() {
   return (
     <ThemedView style={styles.container}>
       <View style={styles.content}>
-        <ThemedText type="title">Now Playing</ThemedText>
+        <ThemedText type="title">Library</ThemedText>
         <ThemedText style={styles.placeholder}>
-          Playback controls will appear here
+          Your liked songs and albums will appear here
         </ThemedText>
       </View>
-      <Link href="/" dismissTo style={styles.closeButton}>
-        <ThemedText type="link">Close</ThemedText>
-      </Link>
     </ThemedView>
   );
 }
@@ -30,14 +25,9 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: spacing.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   placeholder: {
     marginTop: spacing.md,
     color: colors.textSecondary,
-  },
-  closeButton: {
-    padding: spacing.lg,
   },
 });

@@ -1,40 +1,49 @@
-# AGENTS.md
+# Expo Project Agent Notes
 
-## Project Type
+## Commands
 
-Expo SDK 54 + React Native 0.81 + TypeScript app with file-based routing (expo-router).
+- Start dev server: `npx expo start` (not `npm start`)
+- Lint: `npx expo lint` (uses expo's eslint integration)
+- Reset project: `npm run reset-project` (moves app/ to app-example/, creates blank app/)
 
-## Developer Commands
+## Key Conventions
 
-```bash
-npm start        # Start dev server (same as npx expo start)
-npm run android  # Run on Android emulator
-npm run ios      # Run on iOS simulator
-npm run web      # Run in browser
-npm run lint     # Run ESLint
-npm run reset-project  # Reset to fresh project template
-```
+- **Entry point**: `"main": "expo-router/entry"` in package.json
+- **File-based routing**: All routes live in `app/` directory
+- **Root layout**: `app/_layout.tsx` must include `import 'react-native-reanimated'`
+- **Path alias**: Use `@/*` for imports from project root  
+  (e.g., `import { useColorScheme } from '@/hooks/use-color-scheme'`)
 
-## Important Constraints
+## Config Notes
 
-- **Requires Expo Dev Client** — not Expo Go. Media library and background audio need a dev build (`npx expo prebuild` then build native).
-- **No bare workflow** — use only Expo-managed libraries (`expo-media-library`, `expo-av`, `expo-file-system`).
-- **iOS/Android only** — no web support for media features.
+- `app.json` experiments: `typedRoutes` and `reactCompiler` are enabled
+- Strict TypeScript enabled (`tsconfig.json`)
+- New Architecture enabled for iOS/Android
 
-## Architecture
+---
 
-- **Routing**: File-based via `app/` directory (`app/(tabs)/`, `app/modal.tsx`)
-- **State**: Zustand stores in `stores/` (`usePlayerStore`, `useLibraryStore`)
-- **Services**: Business logic in `services/` (player, library, permissions)
-- **Design tokens**: `utils/colors.ts`, `utils/typography.ts`, `utils/spacing.ts`
-- **Types**: Shared interfaces in `types/`
+## Spec File Rules (SDD)
 
-## Known Limitations
+- All specs MUST be created under `/specs` directory
+- Each phase must have its own folder:
+  - `specs/phase-1/`
+  - `specs/phase-2/`
+  - `specs/phase-3/`
+  - `specs/phase-4/`
+- Spec file must be named exactly: `spec.md`
+- Plan and tasks files must follow:
+  - `plan.md`
+  - `tasks.md`
+- No spec files are allowed in the root directory
+- Do NOT create files like `SPEC.md` or `spec.txt` anywhere else
+- Always create missing folders before writing spec files
 
-- No lock screen controls (expo-av limitation)
-- Limited metadata (only title, artist, album, duration, artwork)
-- No arbitrary filesystem scanning (iOS sandboxing)
+## Agent Behavior Rules
 
-## Reference
-
-- Full implementation plan: `docs/implementation.md`
+- NEVER decide spec file location automatically — always follow `/specs/phase-x/`
+- When generating specs, ALWAYS:
+  1. Create correct folder structure
+  2. Write to `spec.md`
+- DO NOT implement code when asked to create a spec
+- Follow SDD pipeline strictly:
+  - Spec → Clarify → Plan → Tasks → Implement
