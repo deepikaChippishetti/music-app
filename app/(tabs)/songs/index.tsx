@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { StyleSheet, View, FlatList, Text, ActivityIndicator } from 'react-native';
+import { useEffect, useState } from 'react';
+import { StyleSheet, View, FlatList, Text, ActivityIndicator, TextInput, Pressable } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { colors } from '@/utils/colors';
@@ -7,18 +7,29 @@ import { spacing } from '@/utils/spacing';
 import { typography } from '@/utils/typography';
 import { usePlayerStore, initPermissionListener } from '@/stores/usePlayerStore';
 import { PermissionDeniedScreen } from '@/components/permission-denied-screen';
+import { SongListItem } from '@/components/song-list-item';
+import type { Song } from '@/types/Song';
+
+type SortOption = 'title-asc' | 'title-desc' | 'artist' | 'duration';
 
 export default function SongsScreen() {
   const {
     permissionStatus,
     songs,
     isLoadingSongs,
+    currentSong,
     checkAndRequestPermission,
     loadSongs,
+    initAudio,
+    playSong,
   } = usePlayerStore();
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortOption, setSortOption] = useState<SortOption>('title-asc');
 
   useEffect(() => {
     initPermissionListener();
+    initAudio();
 
     const init = async () => {
       const status = await checkAndRequestPermission();
@@ -28,7 +39,42 @@ export default function SongsScreen() {
     };
 
     init();
-  }, [checkAndRequestPermission, loadSongs]);
+  }, [checkAndRequestPermission, loadSongs, initAudio]);
+
+  const getFilteredSongs = (): Song[] => {
+    return songs
+      .filter(
+        (song) =>
+          !searchQuery ||
+          song.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          song.artist.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+      .sort((a, b) => {
+        switch (sortOption) {
+          case 'title-asc':
+            return a.title.localeCompare(b.title);
+          case 'title-desc':
+            return b.title.localeCompare(a.title);
+          case 'artist':
+            return a.artist.localeCompare(b.artist);
+          case 'duration':
+            return a.duration - b.duration;
+          default:
+            return 0;
+        }
+      });
+  };
+
+  const handleSongPress = async (song: Song) => {
+    const filtered = getFilteredSongs();
+    await playSong(song, filtered, filtered.findIndex((s) => s.id === song.id));
+  };
+
+  const handleSortPress = () => {
+    const options: SortOption[] = ['title-asc', 'title-desc', 'artist', 'duration'];
+    const currentIdx = options.indexOf(sortOption);
+    setSortOption(options[(currentIdx + 1) % options.length]);
+  };
 
   if (permissionStatus === 'denied' || permissionStatus === 'blocked') {
     return <PermissionDeniedScreen status={permissionStatus} />;
@@ -45,9 +91,24 @@ export default function SongsScreen() {
     );
   }
 
-  if (songs.length === 0) {
-    return (
-      <ThemedView style={styles.container}>
+  const filteredSongs = getFilteredSongs();
+
+  return (
+    <ThemedView style={styles.container}>
+      <View style={styles.header}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search songs..."
+          placeholderTextColor={colors.textTertiary}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        <Pressable style={styles.sortButton} onPress={handleSortPress}>
+          <Text style={styles.sortButtonText}>Sort</Text>
+        </Pressable>
+      </View>
+
+      {filteredSongs.length === 0 ? (
         <View style={styles.centered}>
           <Text style={styles.emptyIcon}>🎵</Text>
           <ThemedText style={styles.emptyText}>No songs found</ThemedText>
@@ -55,23 +116,20 @@ export default function SongsScreen() {
             Add music to your library to see it here
           </ThemedText>
         </View>
-      </ThemedView>
-    );
-  }
-
-  return (
-    <ThemedView style={styles.container}>
-      <FlatList
-        data={songs}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={styles.songItem}>
-            <ThemedText type="default">{item.title}</ThemedText>
-            <ThemedText style={styles.artistText}>{item.artist}</ThemedText>
-          </View>
-        )}
-        contentContainerStyle={styles.listContent}
-      />
+      ) : (
+        <FlatList
+          data={filteredSongs}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <SongListItem
+              song={item}
+              onPress={handleSongPress}
+              isPlaying={item.id === currentSong?.id}
+            />
+          )}
+          contentContainerStyle={styles.listContent}
+        />
+      )}
     </ThemedView>
   );
 }
@@ -104,16 +162,30 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   listContent: {
-    padding: spacing.lg,
+    paddingBottom: 80,
   },
-  songItem: {
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
+  header: {
+    flexDirection: 'row',
+    padding: spacing.md,
+    gap: spacing.md,
   },
-  artistText: {
-    marginTop: spacing.xs,
-    color: colors.textSecondary,
+  searchInput: {
+    flex: 1,
+    height: 40,
+    backgroundColor: colors.surface,
+    borderRadius: 8,
+    paddingHorizontal: spacing.md,
+    color: colors.textPrimary,
+    fontSize: typography.sizes.md,
+  },
+  sortButton: {
+    paddingHorizontal: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: 8,
+    justifyContent: 'center',
+  },
+  sortButtonText: {
+    color: colors.textPrimary,
     fontSize: typography.sizes.sm,
   },
 });

@@ -7,6 +7,14 @@ import {
   requestPermission,
   type PermissionStatus,
 } from '@/services/permissionService';
+import {
+  configureAudioMode,
+  loadAndPlaySong,
+  play,
+  pause,
+  seekTo,
+  unload,
+} from '@/services/playbackService';
 
 interface PlayerState {
   permissionStatus: PermissionStatus;
@@ -18,6 +26,7 @@ interface PlayerState {
   setIsLoadingSongs: (isLoading: boolean) => void;
   checkAndRequestPermission: () => Promise<PermissionStatus>;
   loadSongs: () => Promise<void>;
+  initAudio: () => Promise<void>;
 
   currentSong: Song | null;
   isPlaying: boolean;
@@ -29,6 +38,11 @@ interface PlayerState {
   shuffleEnabled: boolean;
   isLoading: boolean;
 
+  playSong: (song: Song, queue?: Song[], index?: number) => Promise<void>;
+  togglePlayPause: () => Promise<void>;
+  seek: (position: number) => Promise<void>;
+  next: () => Promise<void>;
+  previous: () => Promise<void>;
   setCurrentSong: (song: Song | null) => void;
   setIsPlaying: (isPlaying: boolean) => void;
   setPosition: (position: number) => void;
@@ -66,6 +80,109 @@ export const usePlayerStore = create<PlayerState>((set) => ({
     } catch (error) {
       console.error('Failed to load songs:', error);
       set({ isLoadingSongs: false });
+    }
+  },
+
+  initAudio: async () => {
+    await configureAudioMode();
+  },
+
+  playSong: async (song: Song, queue?: Song[], index?: number) => {
+    const songsQueue = queue || usePlayerStore.getState().songs;
+    const songIndex = index ?? songsQueue.findIndex((s) => s.id === song.id);
+    set({ currentSong: song, queue: songsQueue, queueIndex: songIndex, isLoading: true });
+
+    try {
+      await loadAndPlaySong(
+        song,
+        songsQueue,
+        songIndex,
+        (status) => {
+          set({
+            isPlaying: status.isPlaying,
+            position: status.position,
+            duration: status.duration,
+          });
+        },
+        async () => {
+          const { queue, queueIndex, repeatMode } = usePlayerStore.getState();
+          let nextIndex = queueIndex + 1;
+
+          if (nextIndex >= queue.length) {
+            if (repeatMode === 'all') {
+              nextIndex = 0;
+            } else {
+              return;
+            }
+          }
+
+          const nextSong = queue[nextIndex];
+          if (nextSong) {
+            usePlayerStore.getState().playSong(nextSong, queue, nextIndex);
+          }
+        }
+      );
+      set({ isLoading: false });
+    } catch (error) {
+      console.error('Failed to play song:', error);
+      set({ isLoading: false });
+    }
+  },
+
+  togglePlayPause: async () => {
+    const { isPlaying } = usePlayerStore.getState();
+    if (isPlaying) {
+      await pause();
+      set({ isPlaying: false });
+    } else {
+      await play();
+      set({ isPlaying: true });
+    }
+  },
+
+  seek: async (position: number) => {
+    await seekTo(position);
+    set({ position });
+  },
+
+  next: async () => {
+    const { queue, queueIndex, repeatMode } = usePlayerStore.getState();
+    let nextIndex = queueIndex + 1;
+
+    if (nextIndex >= queue.length) {
+      if (repeatMode === 'all') {
+        nextIndex = 0;
+      } else {
+        return;
+      }
+    }
+
+    const nextSong = queue[nextIndex];
+    if (nextSong) {
+      await loadAndPlaySong(nextSong, queue, nextIndex, (status) => {
+        set({ isPlaying: status.isPlaying, position: status.position, duration: status.duration });
+      }, () => {});
+      set({ currentSong: nextSong, queueIndex: nextIndex });
+    }
+  },
+
+  previous: async () => {
+    const { queue, queueIndex, position } = usePlayerStore.getState();
+    if (position > 3000) {
+      await seekTo(0);
+      set({ position: 0 });
+      return;
+    }
+
+    let prevIndex = queueIndex - 1;
+    if (prevIndex < 0) return;
+
+    const prevSong = queue[prevIndex];
+    if (prevSong) {
+      await loadAndPlaySong(prevSong, queue, prevIndex, (status) => {
+        set({ isPlaying: status.isPlaying, position: status.position, duration: status.duration });
+      }, () => {});
+      set({ currentSong: prevSong, queueIndex: prevIndex });
     }
   },
 

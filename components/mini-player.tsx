@@ -1,30 +1,33 @@
 import { Link } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
-
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { Pressable, StyleSheet, View, Text } from 'react-native';
 import { usePlayerStore } from '@/stores/usePlayerStore';
 import { colors } from '@/utils/colors';
 import { spacing } from '@/utils/spacing';
 
 export function MiniPlayer() {
-  const currentSong = usePlayerStore((state) => state.currentSong);
+  const { currentSong, isPlaying, togglePlayPause } = usePlayerStore();
 
   if (!currentSong) return null;
 
   return (
     <Link href="/modal" asChild>
       <Pressable>
-        <ThemedView style={styles.container}>
-          <View style={styles.content}>
-            <ThemedText style={styles.title} numberOfLines={1}>
+        <View style={styles.container}>
+          <View style={styles.info}>
+            <Text style={styles.title} numberOfLines={1}>
               {currentSong.title}
-            </ThemedText>
-            <ThemedText style={styles.artist} numberOfLines={1}>
+            </Text>
+            <Text style={styles.artist} numberOfLines={1}>
               {currentSong.artist}
-            </ThemedText>
+            </Text>
           </View>
-        </ThemedView>
+          <Pressable style={styles.playBtn} onPress={(e) => {
+            e.stopPropagation();
+            togglePlayPause();
+          }}>
+            <Text style={styles.playIcon}>{isPlaying ? '⏸' : '▶'}</Text>
+          </Pressable>
+        </View>
       </Pressable>
     </Link>
   );
@@ -41,20 +44,26 @@ const styles = StyleSheet.create({
     borderTopColor: colors.divider,
     padding: spacing.sm,
     paddingBottom: spacing.md,
-  },
-  content: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  title: {
+  info: {
     flex: 1,
+  },
+  title: {
     fontSize: 14,
     fontWeight: '500',
     color: colors.textPrimary,
   },
   artist: {
-    flex: 1,
     fontSize: 12,
     color: colors.textSecondary,
+  },
+  playBtn: {
+    padding: spacing.sm,
+  },
+  playIcon: {
+    fontSize: 20,
+    color: colors.textPrimary,
   },
 });
